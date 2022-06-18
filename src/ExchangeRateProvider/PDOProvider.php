@@ -14,31 +14,23 @@ final class PDOProvider implements ExchangeRateProvider
 {
     /**
      * The SELECT statement.
-     *
-     * @var \PDOStatement
      */
-    private $statement;
+    private \PDOStatement $statement;
 
     /**
      * The source currency code if fixed, or null if dynamic.
-     *
-     * @var string|null
      */
-    private $sourceCurrencyCode;
+    private ?string $sourceCurrencyCode = null;
 
     /**
      * The target currency code if fixed, or null if dynamic.
-     *
-     * @var string|null
      */
-    private $targetCurrencyCode;
+    private ?string $targetCurrencyCode = null;
 
     /**
      * Extra parameters set dynamically to resolve the query placeholders.
-     *
-     * @var array
      */
-    private $parameters = [];
+    private array $parameters = [];
 
     /**
      * @param \PDO                     $pdo
