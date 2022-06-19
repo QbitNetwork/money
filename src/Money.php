@@ -16,6 +16,7 @@ use Brick\Math\RoundingMode;
 use Brick\Math\Exception\MathException;
 use Brick\Math\Exception\NumberFormatException;
 use Brick\Math\Exception\RoundingNecessaryException;
+use InvalidArgumentException;
 
 /**
  * A monetary value in a given currency. This class is immutable.
@@ -590,19 +591,73 @@ final class Money extends AbstractMoney
             throw new \InvalidArgumentException('Cannot allocateWithRemainder() to zero ratios only.');
         }
 
-        $monies = [];
+        $ratios = $this->simplifyRatios(array_values($ratios));
+        $total = array_sum($ratios);
 
-        $remainder = $this;
+        [, $remainder] = $this->quotientAndRemainder($total);
 
-        foreach ($ratios as $ratio) {
-            $money = $this->multipliedBy($ratio)->quotient($total);
-            $remainder = $remainder->minus($money);
-            $monies[] = $money;
-        }
+        $toAllocate = $this->minus($remainder);
+
+        $monies = array_map(
+            fn (int $ratio) => $toAllocate->multipliedBy($ratio)->dividedBy($total),
+            $ratios,
+        );
 
         $monies[] = $remainder;
 
         return $monies;
+    }
+
+    /**
+     * @param int[] $ratios
+     * @psalm-param list<int> $ratios
+     *
+     * @return int[]
+     * @psalm-return list<int>
+     */
+    private function simplifyRatios(array $ratios): array
+    {
+        $gcd = $this->gcdOfMultipleInt($ratios);
+
+        return array_map(fn (int $ratio) => intdiv($ratio, $gcd), $ratios);
+    }
+
+    /**
+     * @param int[] $values
+     *
+     * @psalm-param list<int> $values
+     */
+    private function gcdOfMultipleInt(array $values): int
+    {
+        $values = array_map(fn (int $value) => BigInteger::of($value), $values);
+
+        return $this->gcdOfMultipleBigInteger($values)->toInt();
+    }
+
+    /**
+     * @param BigInteger[] $values
+     *
+     * @psalm-param list<BigInteger> $values
+     */
+    private function gcdOfMultipleBigInteger(array $values): BigInteger
+    {
+        $count = count($values);
+
+        if ($count === 0) {
+            throw new InvalidArgumentException(__METHOD__ . ' requires at least one value.');
+        }
+
+        $result = $values[0];
+
+        for ($i = 1; $i < $count; $i++) {
+            $result = $result->gcd($values[$i]);
+
+            if ($result->isEqualTo(1)) {
+                return $result;
+            }
+        }
+
+        return $result;
     }
 
     /**
